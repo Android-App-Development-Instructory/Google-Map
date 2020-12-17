@@ -6,10 +6,16 @@ import androidx.core.app.ActivityCompat;
 
 import android.Manifest;
 import android.content.pm.PackageManager;
+import android.location.Address;
+import android.location.Geocoder;
 import android.location.Location;
 import android.os.Build;
 import android.os.Bundle;
+import android.view.KeyEvent;
 import android.view.View;
+import android.view.inputmethod.EditorInfo;
+import android.widget.EditText;
+import android.widget.TextView;
 
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.maps.CameraUpdateFactory;
@@ -21,22 +27,34 @@ import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+
 public class MainActivity extends AppCompatActivity implements OnMapReadyCallback {
 
     GoogleMap map;
-
+    EditText searchET;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        init();
+
 
         permission();
+
 
         SupportMapFragment supportMapFragment = (SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map);
 
         supportMapFragment.getMapAsync(this);
+    }
+
+    private void init() {
+
+        searchET = findViewById(R.id.searchETid);
     }
 
     private void permission() {
@@ -71,6 +89,48 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         googleMap.getUiSettings().setMyLocationButtonEnabled(false);
 
 
+        searchLocation();
+
+    }
+
+    private void searchLocation() {
+
+        searchET.setOnEditorActionListener(new TextView.OnEditorActionListener() {
+            @Override
+            public boolean onEditorAction(TextView textView, int i, KeyEvent keyEvent) {
+
+                if(i == EditorInfo.IME_ACTION_SEARCH
+                        || i == EditorInfo.IME_ACTION_DONE
+                        || keyEvent.getAction() == KeyEvent.ACTION_DOWN
+                        || keyEvent.getAction() == KeyEvent.KEYCODE_ENTER
+                )
+                {
+                    String search = searchET.getText().toString();
+
+                    Geocoder geocoder = new Geocoder(MainActivity.this);
+                    List<Address> addressList = new ArrayList<>();
+
+                    try {
+                        addressList = geocoder.getFromLocationName(search,1);
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+
+                    if(addressList.size() >0){
+
+                        Address address = addressList.get(0);
+
+                        LatLng latLng = new LatLng(address.getLatitude(),address.getLongitude());
+
+                        map.addMarker(new MarkerOptions().position(latLng).title(address.getAddressLine(0))
+                                .snippet(address.getCountryName()+", "+address.getPostalCode()));
+                        map.moveCamera(CameraUpdateFactory.newLatLngZoom(latLng,15));
+                    }
+                }
+
+                return false;
+            }
+        });
     }
 
     private void currentLocation() {
